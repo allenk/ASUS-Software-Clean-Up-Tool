@@ -298,7 +298,7 @@ call :delete_special "C:\Windows\System32\AsIO2.dll" yes
 robocopy "C:\Windows\System32" ".\_backup_\files" "AsIO3.dll" /MOV /COPYALL /R:5 /W:5
 call :delete_special "C:\Windows\System32\AsIO3.dll" yes
 
-robocopy "C:\Windows\SysWOW64" ".\_backup_\files\SysWOW64" "AsIO2.dll" /MOE /COPYALL /R:5 /W:5
+robocopy "C:\Windows\SysWOW64" ".\_backup_\files\SysWOW64" "AsIO2.dll" /MOV /COPYALL /R:5 /W:5
 call :delete_special "C:\Windows\SysWOW64\AsIO2.dll" yes
 
 robocopy "C:\Windows\SysWOW64" ".\_backup_\files\SysWOW64" "AsIO3.dll" /MOV /COPYALL /R:5 /W:5
@@ -355,7 +355,7 @@ for %%i in (%packagelist%) do (
 	reg delete "!token0!" /f
 	echo.
 	echo ============================================
-	echo --- Finish Registry 1"!token0!"
+	echo --- Finish Registry 1 "!token0!"
 	echo ============================================
 	echo.
 )
@@ -505,7 +505,6 @@ echo.
 echo "All ASUS data has been backed up to the _backup_. Clean ASUS is done!"
 echo.
 goto ENDPROG
-goto :eof
 
 :: implement functions delete_special
 :delete_special <input> <register_for_deletion>
