@@ -26,8 +26,8 @@ for %%A in (%*) do (
 )
 
 :: --- Logging Setup (both modes produce a log) ---
-set "_TIMESTAMP=%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%"
-set "_TIMESTAMP=%_TIMESTAMP: =0%"
+:: Use PowerShell for locale-independent timestamp (avoids / and : in filenames)
+for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "_TIMESTAMP=%%I"
 if "!DRYRUN!"=="1" (
     set "LOGFILE=%~dp0test_dryrun_%_TIMESTAMP%.log"
     set "LOGPREFIX=[DRYRUN]"
