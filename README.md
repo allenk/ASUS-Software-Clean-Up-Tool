@@ -4,11 +4,23 @@
 
 > A comprehensive batch script that completely removes ASUS software, drivers, services, and registry entries from Windows systems.
 
+```text
+  _____  ______ ______ _____   _____ _      ______          _   _
+ |  __ \|  ____|  ____|  __ \ / ____| |    |  ____|   /\   | \ | |
+ | |  | | |__  | |__  | |__) | |    | |    | |__     /  \  |  \| |
+ | |  | |  __| |  __| |  ___/| |    | |    |  __|   / /\ \ | . ` |
+ | |__| | |____| |____| |    | |____| |____| |____ / ____ \| |\  |
+ |_____/|______|______|_|     \_____|______|______/_/    \_\_| \_|
+
+  ASUS Software Clean Up Tool
+  github.com/allenk/deepclean-cmd
+
+```
 | | |
 |---|---|
 | **Platform** | Windows 10 / 11 |
 | **Language** | Batch (CMD) + PowerShell |
-| **Version** | 0.1a |
+| **Version** | 0.2a |
 | **Original Gist** | [allenk/deepclean.cmd](https://gist.github.com/allenk/fcbee909fbf8fb9a54d4484297a1eeba) |
 
 ---
@@ -27,6 +39,25 @@ ASUS ships an extensive software ecosystem with its motherboards, laptops, and p
 ---
 
 ## Features
+
+### Dynamic Path Detection
+
+The script automatically detects your Windows installation paths using environment variables (`%ProgramFiles%`, `%ProgramData%`, `%SystemRoot%`, etc.). No hardcoded `C:\` — works correctly even if Windows is installed on a different drive.
+
+### Dry Run Mode
+
+Run the script with `/DRYRUN` to preview every operation **without executing anything**:
+
+```batch
+.\src\deepclean.cmd /DRYRUN
+```
+
+- Logs all commands that **would** be executed to `test_dryrun_<timestamp>.log`
+- Skips confirmation prompts automatically
+- Normal mode also produces a log (`test_run_<timestamp>.log`) for comparison
+- Both logs use the same format — strip the `[DRYRUN]`/`[EXEC]` prefix to diff them
+
+### Cleanup Phases
 
 The script executes **10 cleanup phases**, each targeting a different layer of ASUS software presence:
 
@@ -77,18 +108,36 @@ The script executes **10 cleanup phases**, each targeting a different layer of A
 ## Usage
 
 ```batch
-:: Right-click deepclean.cmd and select "Run as administrator"
-:: Or from an elevated Command Prompt:
+:: Dry run — preview all operations without executing (as Administrator)
+.\src\deepclean.cmd /DRYRUN
+
+:: Full cleanup (as Administrator)
 .\src\deepclean.cmd
 ```
 
 The script will:
-1. Ask for confirmation before proceeding
+1. Ask for confirmation before proceeding (skipped in `/DRYRUN` mode)
 2. Attempt to uninstall applications (some may show setup UI)
 3. Stop and delete all ASUS services and kernel drivers
 4. Back up and remove folders, files, and registry keys
 5. Ask again before removing all ASUS UWP apps (Phase 7)
 6. Clean temporary files
+7. Write a log file to the script directory (`test_run_<timestamp>.log` or `test_dryrun_<timestamp>.log`)
+
+### Testing with Windows Sandbox
+
+A sandbox launcher is provided for safe testing in an isolated environment:
+
+```batch
+:: Launch Windows Sandbox with the project folder mapped
+.\tests\sandbox\launch-sandbox.cmd
+```
+
+Inside the sandbox:
+1. Run `deepclean.cmd /DRYRUN` — produces a dry run log
+2. Run `deepclean.cmd` — executes for real (sandbox is disposable)
+3. Copy logs to `C:\results\` — they persist on the host at `tests\sandbox\results\`
+4. Close sandbox — all changes are discarded
 
 ---
 
@@ -177,6 +226,14 @@ If your keyboard and mouse stop working after running deepclean.cmd:
 ## Changelog
 
 This project originated as a [GitHub Gist](https://gist.github.com/allenk/fcbee909fbf8fb9a54d4484297a1eeba) with 24 revisions and 74 comments. Key milestones:
+
+### 2026-02 — Dynamic Paths, Dry Run Mode & Sandbox Testing
+- Replaced all hardcoded `C:\` filesystem paths with Windows environment variables for automatic system drive detection
+- Added `/DRYRUN` parameter — logs every destructive command without executing anything
+- Both modes produce structured log files (`[DRYRUN]` / `[EXEC]` prefix) for direct comparison
+- Added Windows Sandbox launcher (`tests/sandbox/launch-sandbox.cmd`) for safe testing
+- Fixed `!App` path corruption caused by `EnableDelayedExpansion` consuming `!` in folder names
+- Removed redundant temp directory cleanup (`%temp%` and `%USERPROFILE%\AppData\Local\Temp` are the same path)
 
 ### 2025-12 — HID Driver Safety
 - Identified critical issue: removing `acsevirtualbus.inf` and `acsehidremap.inf` causes total input device loss on ASUS laptops

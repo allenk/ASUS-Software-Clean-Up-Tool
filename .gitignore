@@ -2,6 +2,11 @@ build/
 target/
 .vscode/
 .idea/
+*.exe
+*.o
 *.log
 *.tmp
 _backup_/
+tests/sandbox/_generated.wsb
+tests/sandbox/results/*
+!tests/sandbox/results/.gitkeep

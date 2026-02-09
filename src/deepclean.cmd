@@ -13,14 +13,82 @@
 :: 6. Reboot to finish all clean up.
 :: 7. Run the tool repeatedly to do backup and clean again and again.
 :: ------------------------------------------------------------------------------------------------------------
-echo ASUS Clean Up Tool 0.1a ... kwyshell@gmail.com
-echo.
 
 setlocal EnableDelayedExpansion
 
-echo "Are you sure to clean up all ASUS resources from your system?"
-choice /C YN /N /M "Select (Y/N): "
-if errorlevel 2 goto ENDPROG
+:: --- Version ---
+set "VER=0.2a"
+
+:: --- /DRYRUN Flag Parsing ---
+set "DRYRUN=0"
+for %%A in (%*) do (
+    if /i "%%~A"=="/DRYRUN" set "DRYRUN=1"
+)
+
+:: --- Logging Setup (both modes produce a log) ---
+set "_TIMESTAMP=%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%"
+set "_TIMESTAMP=%_TIMESTAMP: =0%"
+if "!DRYRUN!"=="1" (
+    set "LOGFILE=%~dp0test_dryrun_%_TIMESTAMP%.log"
+    set "LOGPREFIX=[DRYRUN]"
+) else (
+    set "LOGFILE=%~dp0test_run_%_TIMESTAMP%.log"
+    set "LOGPREFIX=[EXEC]"
+)
+echo ============================================ > "!LOGFILE!"
+echo  deepclean.cmd v!VER! %LOGPREFIX% Log >> "!LOGFILE!"
+echo  Date: %DATE% %TIME% >> "!LOGFILE!"
+echo  SystemDrive: %SystemDrive% >> "!LOGFILE!"
+echo  SystemRoot: %SystemRoot% >> "!LOGFILE!"
+echo  ProgramFiles: %ProgramFiles% >> "!LOGFILE!"
+echo  ProgramFiles(x86^): %ProgramFiles(x86)% >> "!LOGFILE!"
+echo  ProgramData: %ProgramData% >> "!LOGFILE!"
+echo  UserProfile: %USERPROFILE% >> "!LOGFILE!"
+echo ============================================ >> "!LOGFILE!"
+
+:: --- Path Configuration (auto-detect system drive) ---
+set "PF86=%ProgramFiles(x86)%"
+set "PF64=%ProgramFiles%"
+set "PDATA=%ProgramData%"
+set "SYS32=%SystemRoot%\System32"
+set "SYSWOW=%SystemRoot%\SysWOW64"
+set "DRIVERS=%SystemRoot%\System32\drivers"
+set "STARTMENU=%ProgramData%\Microsoft\Windows\Start Menu\Programs"
+set "TASKS=%SystemRoot%\System32\Tasks"
+set "TASKS_MIG=%SystemRoot%\System32\Tasks_Migrated"
+set "SYSPROF=%SystemRoot%\System32\config\systemprofile"
+set "WOWPROF=%SystemRoot%\SysWOW64\config\systemprofile"
+
+:: Escaped path for WMIC (backslashes doubled)
+set "_PF86ESC=!PF86:\=\\!"
+set "_PF64ESC=!PF64:\=\\!"
+
+echo.
+echo   _____  ______ ______ _____   _____ _      ______          _   _
+echo  ^|  __ \^|  ____^|  ____^|  __ \ / ____^| ^|    ^|  ____^|   /\   ^| \ ^| ^|
+echo  ^| ^|  ^| ^| ^|__  ^| ^|__  ^| ^|__^) ^| ^|    ^| ^|    ^| ^|__     /  \  ^|  \^| ^|
+echo  ^| ^|  ^| ^|  __^| ^|  __^| ^|  ___/^| ^|    ^| ^|    ^|  __^|   / /\ \ ^| . ` ^|
+echo  ^| ^|__^| ^| ^|____^| ^|____^| ^|    ^| ^|____^| ^|____^| ^|____ / ____ \^| ^|\  ^|
+echo  ^|_____/^|______^|______^|_^|     \_____^|______^|______/_/    \_\_^| \_^|
+echo.
+echo   v!VER! — ASUS Software Clean Up Tool
+echo   github.com/allenk/deepclean-cmd
+echo.
+if "!DRYRUN!"=="1" (
+    echo [DRYRUN] Mode enabled - no changes will be made
+    echo [DRYRUN] Log file: !LOGFILE!
+    echo.
+)
+
+:: --- Confirmation ---
+if "!DRYRUN!"=="1" (
+    echo [DRYRUN] Skipping confirmation - no changes will be made
+    echo [DRYRUN] Skipping confirmation >> "!LOGFILE!"
+) else (
+    echo "Are you sure to clean up all ASUS resources from your system?"
+    choice /C YN /N /M "Select (Y/N): "
+    if errorlevel 2 goto ENDPROG
+)
 
 :STEP0
 :: uninstall applications via their setup
@@ -30,213 +98,213 @@ echo Remove Apps (You may need to interact with setup programs!)
 :: the new version Armoury Crate built-in uninstall tool so try to remove Armoury Crate before deep clean
 echo.
 echo Remove ArmouryCrate App ...
-powershell.exe -Command "Get-AppxPackage *ArmouryCrate* -allusers | Remove-AppPackage"
+call :run powershell.exe -Command "Get-AppxPackage *ArmouryCrate* -allusers | Remove-AppPackage"
 
 echo Uninstall ... ASUS AIOFanSDK
-start /wait "" "C:\Program Files (x86)\InstallShield Installation Information\{06EA142E-8DA4-4917-8AD5-443F483B502D}\setup.exe" -runfromtemp -l0x0409  -removeonly /s /uninst
+call :run start /wait "" "!PF86!\InstallShield Installation Information\{06EA142E-8DA4-4917-8AD5-443F483B502D}\setup.exe" -runfromtemp -l0x0409  -removeonly /s /uninst
 
 echo Uninstall ... ASUS AURA DRAM Component
-start /wait "" "C:\ProgramData\Package Cache\{179f415f-2ff3-4db1-bcc1-d5730f746db8}\AacSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{9cfd6488-af6d-4b35-9df3-e16b0c6b791b}\AacSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{a06f2235-c1cb-4cd6-91ac-30089f052973}\AacSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{5d3c3229-f8ae-4c6c-9db7-7231adc1ff08}\AacSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{c1d017c2-8846-4000-9254-5689eccd462e}\AacSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{f70a8a88-540d-485d-9aa8-001486fb050e}\AacSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{205ef3a8-937b-43cb-90fc-2f58f71408d8}\AacSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{2715ff64-a3f2-4e15-a47b-6d6ece95d7a2}\AacSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{e42c5874-37b0-4977-9e8d-70bf006e1f76}\AacSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{179f415f-2ff3-4db1-bcc1-d5730f746db8}\AacSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{9cfd6488-af6d-4b35-9df3-e16b0c6b791b}\AacSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{a06f2235-c1cb-4cd6-91ac-30089f052973}\AacSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{5d3c3229-f8ae-4c6c-9db7-7231adc1ff08}\AacSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{c1d017c2-8846-4000-9254-5689eccd462e}\AacSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{f70a8a88-540d-485d-9aa8-001486fb050e}\AacSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{205ef3a8-937b-43cb-90fc-2f58f71408d8}\AacSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{2715ff64-a3f2-4e15-a47b-6d6ece95d7a2}\AacSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{e42c5874-37b0-4977-9e8d-70bf006e1f76}\AacSetup.exe" /uninstall /s
 
 echo Uninstall ... AURA lighting effect add-on
-start /wait "" MsiExec.exe /x {1E2EA04B-FCA7-457E-B6F4-F33E1858E859} /qn
+call :run start /wait "" MsiExec.exe /x {1E2EA04B-FCA7-457E-B6F4-F33E1858E859} /qn
 
 echo Uninstall ... ASUS ROG FAN XPERT 4
-start /wait "" "C:\Program Files (x86)\InstallShield Installation Information\{2dfe216d-3481-4684-ad4d-2566bd7cfe4f}\Setup.exe" -uninstall /s
+call :run start /wait "" "!PF86!\InstallShield Installation Information\{2dfe216d-3481-4684-ad4d-2566bd7cfe4f}\Setup.exe" -uninstall /s
 
 echo Uninstall ... ASUS Framework
-start /wait "" "C:\Program Files (x86)\InstallShield Installation Information\{339A6383-7862-46DA-8A9D-E84180EF9424}\FrameworkServiceSetup.exe" /uninstall /s
+call :run start /wait "" "!PF86!\InstallShield Installation Information\{339A6383-7862-46DA-8A9D-E84180EF9424}\FrameworkServiceSetup.exe" /uninstall /s
 
 echo Uninstall ... ASUS MB Resource
-start /wait "" "C:\ProgramData\Package Cache\{39cdaa93-c446-4421-a337-1e52705dd2f8}\AacMBSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{40dadfa2-acc5-4f75-9138-52616f20c493}\AacMBSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{00aac91e-7198-484b-b29d-1c9990d843ae}\AacMBSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{39cdaa93-c446-4421-a337-1e52705dd2f8}\AacMBSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{40dadfa2-acc5-4f75-9138-52616f20c493}\AacMBSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{00aac91e-7198-484b-b29d-1c9990d843ae}\AacMBSetup.exe" /uninstall /s
 
 echo Uninstall ... ASUS AIO FAN
-start /wait "" "C:\ProgramData\Package Cache\{45ece30d-a966-424e-9bce-f740797c5348}\AacAIOFanSetup.exe" /uninstall /s
-start /wait "" "C:\ProgramData\Package Cache\{fe989498-9799-4e99-9430-39e107988b01}\AacAIOFanSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{45ece30d-a966-424e-9bce-f740797c5348}\AacAIOFanSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{fe989498-9799-4e99-9430-39e107988b01}\AacAIOFanSetup.exe" /uninstall /s
 
 echo Uninstall ... ASUS AURA Extension Card HAL
-start /wait "" "C:\ProgramData\Package Cache\{4e2b05b0-eb08-41e5-9eb3-cdcc43d6bee0}\AacExtCardSetup.exe" /uninstall /s
+call :run start /wait "" "!PDATA!\Package Cache\{4e2b05b0-eb08-41e5-9eb3-cdcc43d6bee0}\AacExtCardSetup.exe" /uninstall /s
 
 echo Uninstall ... ASUS Armoury Main SDK
-start /wait "" "C:\Program Files (x86)\InstallShield Installation Information\{6EE02C78-E908-493B-B1A6-D64AFC53002F}\setup.exe" -runfromtemp -l0x0409  -removeonly /uninstall
+call :run start /wait "" "!PF86!\InstallShield Installation Information\{6EE02C78-E908-493B-B1A6-D64AFC53002F}\setup.exe" -runfromtemp -l0x0409  -removeonly /uninstall
 
-taskkill /f /im GameBar.exe
+call :run taskkill /f /im GameBar.exe
 echo Uninstall ... GameSDK Service
-start /wait "" MsiExec.exe /x {7160DA8D-3F25-4F6E-ABC8-F693551D82FA} /qn
+call :run start /wait "" MsiExec.exe /x {7160DA8D-3F25-4F6E-ABC8-F693551D82FA} /qn
 
 echo Uninstall ... ROG RYUO III
-start /wait "" "C:\Program Files (x86)\InstallShield Installation Information\{84558862-ba54-4c7a-b3f0-b6d76641d4a0}\Setup.exe" -uninstall /s
+call :run start /wait "" "!PF86!\InstallShield Installation Information\{84558862-ba54-4c7a-b3f0-b6d76641d4a0}\Setup.exe" -uninstall /s
 
 echo Uninstall ... ASUS Motherboard
-start /wait "" "C:\Program Files (x86)\InstallShield Installation Information\{93795eb8-bd86-4d4d-ab27-ff80f9467b37}\Setup.exe" -uninstall /s
+call :run start /wait "" "!PF86!\InstallShield Installation Information\{93795eb8-bd86-4d4d-ab27-ff80f9467b37}\Setup.exe" -uninstall /s
 
 echo Uninstall ... AI Suite 3
-start /wait "" "C:\ProgramData\ASUS\AI Suite III\Setup.exe" -u -s
+call :run start /wait "" "!PDATA!\ASUS\AI Suite III\Setup.exe" -u -s
 
 echo Uninstall ... ASUS Driver Hub
-start /wait "" "C:\Program Files\ASUS\AsusDriverHubInstaller\ASUS-DriverHub-Installer.exe" /u
+call :run start /wait "" "!PF64!\ASUS\AsusDriverHubInstaller\ASUS-DriverHub-Installer.exe" /u
 
 echo Uninstall ... Armoury Crate Service
-start /wait "" "C:\Program Files\ASUS\Armoury Crate Service\ArmouryCrate.Uninstaller.exe" /u
+call :run start /wait "" "!PF64!\ASUS\Armoury Crate Service\ArmouryCrate.Uninstaller.exe" /u
 
 echo Uninstall ... AniMe Matrix Font
-start /wait "" MsiExec.exe /x {70ABCE41-0F10-4E36-9C93-1AFB1DF2AF42} /qn
+call :run start /wait "" MsiExec.exe /x {70ABCE41-0F10-4E36-9C93-1AFB1DF2AF42} /qn
 
 echo Uninstall ... ASUS Smart Input Service
-start /wait "" MsiExec.exe /x {D6B9E727-05B5-46EC-966F-321705D21FD2} /qn
+call :run start /wait "" MsiExec.exe /x {D6B9E727-05B5-46EC-966F-321705D21FD2} /qn
 
 echo Uninstall ... ASUS AURA Extension Card HAL
-start /wait "" MsiExec.exe /x {237E1CAC-1708-4940-AC34-DF15C079AB70} /qn
+call :run start /wait "" MsiExec.exe /x {237E1CAC-1708-4940-AC34-DF15C079AB70} /qn
 
 echo Uninstall ... ROG Live Service
-start /wait "" MsiExec.exe /x {2D87BFB6-C184-4A59-9BBE-3E20CE797631} /qn
+call :run start /wait "" MsiExec.exe /x {2D87BFB6-C184-4A59-9BBE-3E20CE797631} /qn
 
 echo Uninstall ... AniMe Matrix MB EN
-start /wait "" MsiExec.exe /x {399B6DA7-B609-426E-95F8-B9A83FB7D06E} /qn
+call :run start /wait "" MsiExec.exe /x {399B6DA7-B609-426E-95F8-B9A83FB7D06E} /qn
 
 echo Uninstall ... ASUS AURA Motherboard HAL
-start /wait "" MsiExec.exe /x {4EBEAC95-76BC-46A8-8644-6E2F1C87CF70} /qn
+call :run start /wait "" MsiExec.exe /x {4EBEAC95-76BC-46A8-8644-6E2F1C87CF70} /qn
 
 echo Uninstall ... ROGFontInstaller
-start /wait "" MsiExec.exe /x {605108C1-153E-43D8-8A67-7CE326B00ECA} /qn
+call :run start /wait "" MsiExec.exe /x {605108C1-153E-43D8-8A67-7CE326B00ECA} /qn
 
 echo Uninstall ... AURA DRAM Component
-start /wait "" MsiExec.exe /x {6FB66775-BB93-4D0A-9871-4CC9B2E87BF3} /qn
+call :run start /wait "" MsiExec.exe /x {6FB66775-BB93-4D0A-9871-4CC9B2E87BF3} /qn
 
 echo Uninstall ... AURA lighting effect add-on x64
-start /wait "" MsiExec.exe /x {C5A4A164-4428-4931-B728-96EEF0FA3C44} /qn
+call :run start /wait "" MsiExec.exe /x {C5A4A164-4428-4931-B728-96EEF0FA3C44} /qn
 
 echo Uninstall ... ASUS Aura SDK
-start /wait "" MsiExec.exe /x {CF8E6E00-9C03-4440-81C0-21FACB921A6B} /qn
+call :run start /wait "" MsiExec.exe /x {CF8E6E00-9C03-4440-81C0-21FACB921A6B} /qn
 
 echo Uninstall ... ASUS AIOFan HAL
-start /wait "" MsiExec.exe /x {EAE80DED-1A39-41C5-9F60-87CC947F6454} /qn
+call :run start /wait "" MsiExec.exe /x {EAE80DED-1A39-41C5-9F60-87CC947F6454} /qn
 
 echo Uninstall ... ARMOURY CRATE Lite Service
-start /wait "" MsiExec.exe /x {EF3944FF-2501-4568-B15C-5701E726719E} /qn
+call :run start /wait "" MsiExec.exe /x {EF3944FF-2501-4568-B15C-5701E726719E} /qn
 
 echo Uninstall ... RefreshRateService
-start /wait "" MsiExec.exe /x {7E5E84CB-B190-4658-A4DC-166779C329D1} /qn
+call :run start /wait "" MsiExec.exe /x {7E5E84CB-B190-4658-A4DC-166779C329D1} /qn
 
 echo Uninstall ... ASUS_FRQ_Control
-start /wait "" MsiExec.exe /x {8714A8D1-0F08-4681-9DF6-A8C4607A58B4} /qn
+call :run start /wait "" MsiExec.exe /x {8714A8D1-0F08-4681-9DF6-A8C4607A58B4} /qn
 
 echo Uninstall ... ASUS AURA Motherboard HAL
-start /wait "" MsiExec.exe /x {359B9A9D-A289-4962-BCE2-13EBFD50D532} /qn
+call :run start /wait "" MsiExec.exe /x {359B9A9D-A289-4962-BCE2-13EBFD50D532} /qn
 
 echo Uninstall ... ROGFontInstaller
-start /wait "" MsiExec.exe /x {605108C1-153E-43D8-8A67-7CE326B00ECA} /qn
+call :run start /wait "" MsiExec.exe /x {605108C1-153E-43D8-8A67-7CE326B00ECA} /qn
 
 echo Uninstall ... AURA DRAM Component
-start /wait "" MsiExec.exe /x {86D4C8A2-DB22-4948-950D-28DD5145F91C} /qn
+call :run start /wait "" MsiExec.exe /x {86D4C8A2-DB22-4948-950D-28DD5145F91C} /qn
 
 echo Uninstall ... AniMeVisionFont_MB
-start /wait "" MsiExec.exe /x {93E38BA3-9745-4D67-91BC-F65F81523D0A} /qn
+call :run start /wait "" MsiExec.exe /x {93E38BA3-9745-4D67-91BC-F65F81523D0A} /qn
 
 echo Uninstall ... ASUS Ambient HAL
-start /wait "" MsiExec.exe /x {BC4DB8AE-8E55-4B06-8656-FB1E4A035A11} /qn
+call :run start /wait "" MsiExec.exe /x {BC4DB8AE-8E55-4B06-8656-FB1E4A035A11} /qn
 
 echo Uninstall ... AniMeVisionFont_AIO
-start /wait "" MsiExec.exe /x {E980EAD4-0B34-484A-993C-BB6B3852F41C} /qn
+call :run start /wait "" MsiExec.exe /x {E980EAD4-0B34-484A-993C-BB6B3852F41C} /qn
 
 :: Stop ASUS services and drivers
-sc stop ArmouryCrateControlInterface
-sc stop ASUSLinkNear
-sc stop ASUSLinkRemote
-sc stop ASUSLinkNearExt
-sc stop ASUSSoftwareManager
-sc stop ASUSSwitch
-sc stop ASUSSystemAnalysis
-sc stop ASUSSystemDiagnosis
-sc stop AsusROGLSLService
-sc stop AsusAppService
-sc stop ASUSSoftwareManager
-sc stop asus
-sc stop asusm
-sc stop AsusCertService
-sc stop "GameSDK Service"
-sc stop AsusFanControlService
-sc stop AsusUpdateCheck
-sc stop LightingService
-sc stop IOMap
-sc stop RefreshRateService
-sc stop ASUSOptimization
+call :run sc stop ArmouryCrateControlInterface
+call :run sc stop ASUSLinkNear
+call :run sc stop ASUSLinkRemote
+call :run sc stop ASUSLinkNearExt
+call :run sc stop ASUSSoftwareManager
+call :run sc stop ASUSSwitch
+call :run sc stop ASUSSystemAnalysis
+call :run sc stop ASUSSystemDiagnosis
+call :run sc stop AsusROGLSLService
+call :run sc stop AsusAppService
+call :run sc stop ASUSSoftwareManager
+call :run sc stop asus
+call :run sc stop asusm
+call :run sc stop AsusCertService
+call :run sc stop "GameSDK Service"
+call :run sc stop AsusFanControlService
+call :run sc stop AsusUpdateCheck
+call :run sc stop LightingService
+call :run sc stop IOMap
+call :run sc stop RefreshRateService
+call :run sc stop ASUSOptimization
 
 :: Stop kernel drivers
-sc stop asusgio2
-sc stop asusgio3
+call :run sc stop asusgio2
+call :run sc stop asusgio3
 
 :: Delete ASUS services and drivers
-sc delete ArmouryCrateControlInterface
-sc delete ASUSLinkNear
-sc delete ASUSLinkRemote
-sc delete ASUSLinkNearExt
-sc delete ASUSSoftwareManager
-sc delete ASUSSwitch
-sc delete ASUSSystemAnalysis
-sc delete ASUSSystemDiagnosis
-sc delete AsusROGLSLService
-sc delete AsusAppService
-sc delete ASUSSoftwareManager
-sc delete asus
-sc delete asusm
-sc delete AsusCertService
-sc delete "GameSDK Service"
-sc delete AsusFanControlService
-sc delete AsusUpdateCheck
-sc delete LightingService
-sc delete IOMap
-sc delete RefreshRateService
-sc delete ASUSOptimization
+call :run sc delete ArmouryCrateControlInterface
+call :run sc delete ASUSLinkNear
+call :run sc delete ASUSLinkRemote
+call :run sc delete ASUSLinkNearExt
+call :run sc delete ASUSSoftwareManager
+call :run sc delete ASUSSwitch
+call :run sc delete ASUSSystemAnalysis
+call :run sc delete ASUSSystemDiagnosis
+call :run sc delete AsusROGLSLService
+call :run sc delete AsusAppService
+call :run sc delete ASUSSoftwareManager
+call :run sc delete asus
+call :run sc delete asusm
+call :run sc delete AsusCertService
+call :run sc delete "GameSDK Service"
+call :run sc delete AsusFanControlService
+call :run sc delete AsusUpdateCheck
+call :run sc delete LightingService
+call :run sc delete IOMap
+call :run sc delete RefreshRateService
+call :run sc delete ASUSOptimization
 
 :: Delete kernel drivers
-sc delete asusgio2
-sc delete asusgio3
+call :run sc delete asusgio2
+call :run sc delete asusgio3
 
 :: kill ASUS process
-taskkill /f /im atkexComSvc.exe
-taskkill /f /im AsusCertService.exe
-taskkill /f /im AsSysCtrlService.exe
-taskkill /f /im ArmourySwAgent.exe
-taskkill /f /im LightingService.exe
-taskkill /f /im RefreshRateService.exe
-taskkill /f /im ASUS_FRQ_Control.exe
-taskkill /f /im "ASUS DriverHub.exe"
-taskkill /f /im AsusDownLoadLicense.exe
-taskkill /f /im extensionCardHal_x86.exe
-taskkill /f /im Aac3572MbHal_x86.exe
-taskkill /f /im Aac3572DramHal_x86.exe
-taskkill /f /im AacKingstonDramHal_x86.exe
-taskkill /f /im AacKingstonDramHal_x64.exe
-taskkill /f /im Aac3572MbHal_x86.exe
+call :run taskkill /f /im atkexComSvc.exe
+call :run taskkill /f /im AsusCertService.exe
+call :run taskkill /f /im AsSysCtrlService.exe
+call :run taskkill /f /im ArmourySwAgent.exe
+call :run taskkill /f /im LightingService.exe
+call :run taskkill /f /im RefreshRateService.exe
+call :run taskkill /f /im ASUS_FRQ_Control.exe
+call :run taskkill /f /im "ASUS DriverHub.exe"
+call :run taskkill /f /im AsusDownLoadLicense.exe
+call :run taskkill /f /im extensionCardHal_x86.exe
+call :run taskkill /f /im Aac3572MbHal_x86.exe
+call :run taskkill /f /im Aac3572DramHal_x86.exe
+call :run taskkill /f /im AacKingstonDramHal_x86.exe
+call :run taskkill /f /im AacKingstonDramHal_x64.exe
+call :run taskkill /f /im Aac3572MbHal_x86.exe
 
-WMIC Process Where "ExecutablePath='C:\\Program Files (x86)\\ASUS\\ArmouryDevice\\dll\\AcPowerNotification\\AcPowerNotification.exe'" Call Terminate
-WMIC Process Where "ExecutablePath='C:\\Program Files (x86)\\ASUS\\ArmouryDevice\\dll\\ArmourySocketServer\\ArmourySocketServer.exe'" Call Terminate
-WMIC Process Where "ExecutablePath='C:\\Program Files (x86)\\ASUS\\ArmouryDevice\\asus_framework.exe'" Call Terminate
-WMIC Process Where "ExecutablePath='C:\\Program Files (x86)\\ASUS\\ArmouryDevice\\dll\\MBLedSDK\\NoiseCancelingEngine.exe'" Call Terminate
-WMIC Process Where "ExecutablePath='C:\\Program Files (x86)\\ASUS\\ArmouryDevice\\dll\\ShareFromArmouryIII\\Mouse\\ROG STRIX CARRY\\P508PowerAgent.exe'" Call Terminate
-WMIC Process Where "ExecutablePath='C:\\Program Files (x86)\\ASUS\\GameSDK Service\\GameSDK.exe'" Call Terminate
-WMIC Process Where "ExecutablePath='C:\\Program Files\\ASUS\\AsusDriverHub\\ADU.exe'" Call Terminate
+call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\dll\\AcPowerNotification\\AcPowerNotification.exe'" Call Terminate
+call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\dll\\ArmourySocketServer\\ArmourySocketServer.exe'" Call Terminate
+call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\asus_framework.exe'" Call Terminate
+call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\dll\\MBLedSDK\\NoiseCancelingEngine.exe'" Call Terminate
+call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\dll\\ShareFromArmouryIII\\Mouse\\ROG STRIX CARRY\\P508PowerAgent.exe'" Call Terminate
+call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\GameSDK Service\\GameSDK.exe'" Call Terminate
+call :run WMIC Process Where "ExecutablePath='!_PF64ESC!\\ASUS\\AsusDriverHub\\ADU.exe'" Call Terminate
 
 :: stop and remote Notebook or Laptop related drivers and services
 echo Uninstall Notebook or Laptop Drivers and Apps
 echo Searching for ASUS System Control Interface related drivers...
-for /f "tokens=*" %%i in ('powershell -Command "Get-WmiObject -Query \"SELECT * FROM Win32_PnPSignedDriver WHERE DeviceName LIKE 'ASUS System Control Interface%'\" | Select-Object -ExpandProperty InfName"') do (
+for /f "tokens=*" %%i in ('powershell -Command "Get-WmiObject -Query \"SELECT * FROM Win32_PnPSignedDriver WHERE DeviceName LIKE 'ASUS System Control Interface%%'\" | Select-Object -ExpandProperty InfName"') do (
 	set INFNAME=%%i
 	echo Found INF File: !INFNAME!
 
 	echo Deleting driver with INF file: !INFNAME!
-	pnputil /delete-driver !INFNAME! /uninstall
+	call :run pnputil /delete-driver !INFNAME! /uninstall
 )
 
 :STEP1
@@ -245,13 +313,12 @@ mkdir "_backup_" 2>nul
 mkdir "_backup_\registry" 2>nul
 
 :: backup and remove folders
-SET packagelist="C:\Program Files (x86)\ASUS" "C:\Program Files\ASUS" "C:\ProgramData\ASUS" "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\ASUS" "C:\Windows\System32\Tasks_Migrated\ASUS" "C:\Windows\System32\Tasks\ASUS"
-SET packagelist=%packagelist% "C:\Windows\System32\config\systemprofile\AppData\Local\ASUS" "%USERPROFILE%\AppData\Local\ASUS" "%USERPROFILE%\AppData\Roaming\ASUS" "C:\Program Files (x86)\LightingService"
+SET packagelist="!PF86!\ASUS" "!PF64!\ASUS" "!PDATA!\ASUS" "!STARTMENU!\ASUS" "!TASKS_MIG!\ASUS" "!TASKS!\ASUS"
+SET packagelist=%packagelist% "!SYSPROF!\AppData\Local\ASUS" "%USERPROFILE%\AppData\Local\ASUS" "%USERPROFILE%\AppData\Roaming\ASUS" "!PF86!\LightingService"
 SET packagelist=%packagelist% "%USERPROFILE%\AppData\Local\nhAsusStrix1.0.9" "%USERPROFILE%\AppData\Local\nhAsusStrix1.1.2"
-SET packagelist=%packagelist% "%USERPROFILE%\Downloads\B9ECED6F.ASUSPCAssistant_qmba6cd70vzyy!App"
-SET packagelist=%packagelist% "C:\Program Files (x86)\InstallShield Installation Information\{06EA142E-8DA4-4917-8AD5-443F483B502D}" "C:\Program Files (x86)\InstallShield Installation Information\{2dfe216d-3481-4684-ad4d-2566bd7cfe4f}"
-SET packagelist=%packagelist% "C:\Program Files (x86)\InstallShield Installation Information\{339A6383-7862-46DA-8A9D-E84180EF9424}" "C:\Program Files (x86)\InstallShield Installation Information\{6EE02C78-E908-493B-B1A6-D64AFC53002F}"
-SET packagelist=%packagelist% "C:\Program Files (x86)\InstallShield Installation Information\{84558862-ba54-4c7a-b3f0-b6d76641d4a0}" "C:\Program Files (x86)\InstallShield Installation Information\{93795eb8-bd86-4d4d-ab27-ff80f9467b37}"
+SET packagelist=%packagelist% "!PF86!\InstallShield Installation Information\{06EA142E-8DA4-4917-8AD5-443F483B502D}" "!PF86!\InstallShield Installation Information\{2dfe216d-3481-4684-ad4d-2566bd7cfe4f}"
+SET packagelist=%packagelist% "!PF86!\InstallShield Installation Information\{339A6383-7862-46DA-8A9D-E84180EF9424}" "!PF86!\InstallShield Installation Information\{6EE02C78-E908-493B-B1A6-D64AFC53002F}"
+SET packagelist=%packagelist% "!PF86!\InstallShield Installation Information\{84558862-ba54-4c7a-b3f0-b6d76641d4a0}" "!PF86!\InstallShield Installation Information\{93795eb8-bd86-4d4d-ab27-ff80f9467b37}"
 SET packagelist=%packagelist% "%USERPROFILE%\AppData\Roaming\asus_framework"
 
 echo.
@@ -267,9 +334,9 @@ for %%i in (%packagelist%) do (
 	echo --- Folder !token0!
 	echo ============================================
 	echo.
-	robocopy "!token0!" ".\_backup_\folders\!output!" /E /Z /MOVE /COPYALL /R:5 /W:5 /LOG:".\_backup_\cleanfolders_!token2!.log"
+	call :run robocopy "!token0!" ".\_backup_\folders\!output!" /E /Z /MOVE /COPYALL /R:5 /W:5 /LOG:".\_backup_\cleanfolders_!token2!.log"
 	::rd /s/q "!token0!"
-	powershell -NoLogo -NoProfile -Command "if (Test-Path -LiteralPath '\\?\!token0!') { Remove-Item -LiteralPath '\\?\!token0!' -Recurse -Force -ErrorAction SilentlyContinue }"
+	call :run powershell -NoLogo -NoProfile -Command "if (Test-Path -LiteralPath '\\?\!token0!') { Remove-Item -LiteralPath '\\?\!token0!' -Recurse -Force -ErrorAction SilentlyContinue }"
 
 	echo.
 	echo ============================================
@@ -278,44 +345,72 @@ for %%i in (%packagelist%) do (
 	echo.
 )
 
+:: Handle path with ! in name separately (! is incompatible with EnableDelayedExpansion)
+setlocal DisableDelayedExpansion
+set "_EP=%USERPROFILE%\Downloads\B9ECED6F.ASUSPCAssistant_qmba6cd70vzyy!App"
+set "_ET=%_EP::\=_%"
+set "_EL=%_ET:\=_%"
+echo ============================================
+echo --- Folder %_EP%
+echo ============================================
+echo.
+echo %LOGPREFIX% robocopy "%_EP%" ".\_backup_\folders\%_ET%" /E /Z /MOVE /COPYALL /R:5 /W:5 /LOG:".\_backup_\cleanfolders_%_EL%.log" >> "%LOGFILE%"
+if "%DRYRUN%"=="1" (
+	echo %LOGPREFIX% robocopy "%_EP%" ".\_backup_\folders\%_ET%" /E /Z /MOVE /COPYALL /R:5 /W:5 /LOG:".\_backup_\cleanfolders_%_EL%.log"
+) else (
+	robocopy "%_EP%" ".\_backup_\folders\%_ET%" /E /Z /MOVE /COPYALL /R:5 /W:5 /LOG:".\_backup_\cleanfolders_%_EL%.log"
+)
+echo %LOGPREFIX% powershell -NoLogo -NoProfile -Command "if (Test-Path -LiteralPath '\\?\%_EP%') { Remove-Item -LiteralPath '\\?\%_EP%' -Recurse -Force -ErrorAction SilentlyContinue }" >> "%LOGFILE%"
+if "%DRYRUN%"=="1" (
+	echo %LOGPREFIX% powershell -NoLogo -NoProfile -Command "if (Test-Path -LiteralPath '\\?\%_EP%') { Remove-Item -LiteralPath '\\?\%_EP%' -Recurse -Force -ErrorAction SilentlyContinue }"
+) else (
+	powershell -NoLogo -NoProfile -Command "if (Test-Path -LiteralPath '\\?\%_EP%') { Remove-Item -LiteralPath '\\?\%_EP%' -Recurse -Force -ErrorAction SilentlyContinue }"
+)
+echo.
+echo ============================================
+echo --- Finish Folder "%_EP%"
+echo ============================================
+echo.
+endlocal
+
 :STEP2
 :: specified files
 echo.
 echo Backup and Clean Files ...
-robocopy "C:\Windows\System32" ".\_backup_\files" "AsusUpdateCheck.exe" /MOV /COPYALL /R:5 /W:5
+call :run robocopy "!SYS32!" ".\_backup_\files" "AsusUpdateCheck.exe" /MOV /COPYALL /R:5 /W:5
 
-call :delete_special "C:\Windows\System32\AsusUpdateCheck.exe" yes
+call :delete_special "!SYS32!\AsusUpdateCheck.exe" yes
 
-robocopy "C:\Windows\System32" ".\_backup_\files" "AsusDownloadAgent.exe" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Windows\System32\AsusDownloadAgent.exe" yes
+call :run robocopy "!SYS32!" ".\_backup_\files" "AsusDownloadAgent.exe" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!SYS32!\AsusDownloadAgent.exe" yes
 
-robocopy "C:\Windows\System32" ".\_backup_\files" "AsusDownLoadLicense.exe" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Windows\System32\AsusDownLoadLicense.exe" yes
+call :run robocopy "!SYS32!" ".\_backup_\files" "AsusDownLoadLicense.exe" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!SYS32!\AsusDownLoadLicense.exe" yes
 
-robocopy "C:\Windows\System32" ".\_backup_\files" "AsIO2.dll" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Windows\System32\AsIO2.dll" yes
+call :run robocopy "!SYS32!" ".\_backup_\files" "AsIO2.dll" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!SYS32!\AsIO2.dll" yes
 
-robocopy "C:\Windows\System32" ".\_backup_\files" "AsIO3.dll" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Windows\System32\AsIO3.dll" yes
+call :run robocopy "!SYS32!" ".\_backup_\files" "AsIO3.dll" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!SYS32!\AsIO3.dll" yes
 
-robocopy "C:\Windows\SysWOW64" ".\_backup_\files\SysWOW64" "AsIO2.dll" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Windows\SysWOW64\AsIO2.dll" yes
+call :run robocopy "!SYSWOW!" ".\_backup_\files\SysWOW64" "AsIO2.dll" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!SYSWOW!\AsIO2.dll" yes
 
-robocopy "C:\Windows\SysWOW64" ".\_backup_\files\SysWOW64" "AsIO3.dll" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Windows\SysWOW64\AsIO3.dll" yes
+call :run robocopy "!SYSWOW!" ".\_backup_\files\SysWOW64" "AsIO3.dll" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!SYSWOW!\AsIO3.dll" yes
 
-robocopy "C:\Windows\System32\drivers" ".\_backup_\files\drivers" "AsIO2.sys" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Windows\System32\drivers\AsIO2.sys" yes
+call :run robocopy "!DRIVERS!" ".\_backup_\files\drivers" "AsIO2.sys" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!DRIVERS!\AsIO2.sys" yes
 
-robocopy "C:\Windows\System32\drivers" ".\_backup_\files\drivers" "AsIO3.sys" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Windows\System32\drivers\AsIO3.sys" yes
+call :run robocopy "!DRIVERS!" ".\_backup_\files\drivers" "AsIO3.sys" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!DRIVERS!\AsIO3.sys" yes
 
-robocopy "C:\Program Files\ASUS\ARMOURY CRATE Lite Service\MB_Home" ".\_backup_\files" "MB_Home.dll" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Program Files\ASUS\ARMOURY CRATE Lite Service\MB_Home\MB_Home.dll" yes
-call :delete_special "C:\Program Files\ASUS\ARMOURY CRATE Lite Service\MB_Home\~MB_Home.dll" yes
+call :run robocopy "!PF64!\ASUS\ARMOURY CRATE Lite Service\MB_Home" ".\_backup_\files" "MB_Home.dll" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!PF64!\ASUS\ARMOURY CRATE Lite Service\MB_Home\MB_Home.dll" yes
+call :delete_special "!PF64!\ASUS\ARMOURY CRATE Lite Service\MB_Home\~MB_Home.dll" yes
 
-robocopy "C:\Windows\System32\drivers" ".\_backup_\files\drivers" "IOMap64.sys" /MOV /COPYALL /R:5 /W:5
-call :delete_special "C:\Windows\System32\drivers\IOMap64.sys" yes
+call :run robocopy "!DRIVERS!" ".\_backup_\files\drivers" "IOMap64.sys" /MOV /COPYALL /R:5 /W:5
+call :delete_special "!DRIVERS!\IOMap64.sys" yes
 
 :STEP3
 :: clean reg 1
@@ -352,7 +447,7 @@ for %%i in (%packagelist%) do (
 	echo ============================================
 	echo.
 	reg export "!token0!" ".\_backup_\registry\!output!.reg" /y
-	reg delete "!token0!" /f
+	call :run reg delete "!token0!" /f
 	echo.
 	echo ============================================
 	echo --- Finish Registry 1 "!token0!"
@@ -427,7 +522,7 @@ for %%i in (%packagelist%) do (
 	echo ============================================
 	echo.
 	reg export "!token0!" ".\_backup_\registry\!output!.reg" /y
-	reg delete "!token0!" /f
+	call :run reg delete "!token0!" /f
 	echo.
 	echo ============================================
 	echo --- Finish Registry 2 "!token0!"
@@ -440,20 +535,20 @@ for %%i in (%packagelist%) do (
 echo.
 echo Backup and Clean Tasks ...
 :: clean specified tasks
-schtasks /delete /TN "ASUS Optimization 36D18D69AFC3" /F
-schtasks /delete /TN "ASUSProArtUpdateService-Logon" /F
-schtasks /delete /TN "ArmourySocketServer" /F
+call :run schtasks /delete /TN "ASUS Optimization 36D18D69AFC3" /F
+call :run schtasks /delete /TN "ASUSProArtUpdateService-Logon" /F
+call :run schtasks /delete /TN "ArmourySocketServer" /F
 
 :: clean ASUS task folder
 echo.
 echo Clean ASUS Tasks ...
-FOR /F "tokens=3 delims=\" %%G IN ('schtasks /Query /FO LIST ^| findstr ASUS') DO schtasks /Delete /TN "\ASUS\%%G" /F
+FOR /F "tokens=3 delims=\" %%G IN ('schtasks /Query /FO LIST ^| findstr ASUS') DO call :run schtasks /Delete /TN "\ASUS\%%G" /F
 
 :STEP6
 :: remove ArmouryCrate App
 echo.
 echo Remove ArmouryCrate App again ...
-powershell.exe -Command "Get-AppxPackage *ArmouryCrate* -allusers | Remove-AppPackage"
+call :run powershell.exe -Command "Get-AppxPackage *ArmouryCrate* -allusers | Remove-AppPackage"
 
 :STEP7
 :: remove all other ASUS Apps
@@ -469,24 +564,29 @@ echo.
 echo "Please double check if all the apps listed above are the ones you want to delete!"
 echo "*** WARNING ***"
 echo "Are you sure you want to remove these apps?"
-choice /C YN /N /M "Select (Y/N): "
-if errorlevel 2 goto STEP8
-powershell.exe -Command "Get-AppxPackage *ASUS* -allusers | Remove-AppPackage"
+if "!DRYRUN!"=="1" (
+    echo [DRYRUN] Skipping confirmation - no changes will be made
+    echo [DRYRUN] Skipping confirmation >> "!LOGFILE!"
+) else (
+    choice /C YN /N /M "Select (Y/N): "
+    if errorlevel 2 goto STEP8
+)
+call :run powershell.exe -Command "Get-AppxPackage *ASUS* -allusers | Remove-AppPackage"
 
 :STEP8
 :: clean specified folders
 echo.
 echo remove specified folders ...
-set "P1=C:\Windows\SysWOW64\config\systemprofile\AppData\Roaming\asus_framework"
-set "P2=C:\Windows\System32\config\systemprofile\AppData\Roaming\asus_framework"
+set "P1=!WOWPROF!\AppData\Roaming\asus_framework"
+set "P2=!SYSPROF!\AppData\Roaming\asus_framework"
 
-for %%P in ("%P1%" "%P2%") do (
+for %%P in ("!P1!" "!P2!") do (
   if exist "%%~P" (
     echo Removing %%~P ...
-    attrib -r -h -s "\\?\%%~P" /s /d 2>nul
-    takeown /f "%%~P" /r /d y >nul
-    icacls "%%~P" /grant administrators:F /t >nul
-    powershell -NoLogo -NoProfile -Command "Remove-Item -LiteralPath '\\?\%%~P' -Recurse -Force -ErrorAction SilentlyContinue"
+    call :run attrib -r -h -s "\\?\%%~P" /s /d
+    call :run takeown /f "%%~P" /r /d y
+    call :run icacls "%%~P" /grant administrators:F /t
+    call :run powershell -NoLogo -NoProfile -Command "Remove-Item -LiteralPath '\\?\%%~P' -Recurse -Force -ErrorAction SilentlyContinue"
     echo Done.
   ) else (
     echo [Skip] Not found: %%~P
@@ -496,22 +596,32 @@ for %%P in ("%P1%" "%P2%") do (
 :STEP9
 :: remove Temp files
 echo clean temp folders ...
-del /s /q /f %SystemRoot%\Temp\*.*
-del /s /q /f %temp%\*.*
-del /s /q /f %USERPROFILE%\AppData\Local\Temp\*.*
+call :run del /s /q /f %SystemRoot%\Temp\*.*
+call :run del /s /q /f %temp%\*.*
 
 :FINAL_STEP
 echo.
 echo "All ASUS data has been backed up to the _backup_. Clean ASUS is done!"
+echo Log file: !LOGFILE!
 echo.
 goto ENDPROG
+
+:: --- :run wrapper - logs and conditionally executes commands ---
+:run
+echo !LOGPREFIX! %* >> "!LOGFILE!"
+if "!DRYRUN!"=="1" (
+    echo !LOGPREFIX! %*
+) else (
+    %*
+)
+exit /b
 
 :: implement functions delete_special
 :delete_special <input> <register_for_deletion>
 	setlocal EnableDelayedExpansion
-	takeown /F "%~1" >nul 2>&1
-	icacls "%~1" /grant %USERNAME%:F >nul 2>&1
-	del "%~1" >nul 2>&1
+	call :run takeown /F "%~1"
+	call :run icacls "%~1" /grant %USERNAME%:F
+	call :run del "%~1"
 	if "%~2" equ "yes" (
 		call :register_pending_delete "%~1"
 	)
@@ -520,7 +630,7 @@ goto ENDPROG
 
 :: implement functions register_pending_deletes
 :register_pending_delete <file_to_delete>
-	powershell.exe -Command "& {Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Utils { [DllImport(\"kernel32.dll\", SetLastError=true, CharSet=CharSet.Auto)] public static extern bool MoveFileEx(string lpExistingFileName, uint lpNewFileName, uint dwFlags); }'; [Utils]::MoveFileEx('%~1', 0, 0x4);}"
+	call :run powershell.exe -Command "& {Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Utils { [DllImport(\"kernel32.dll\", SetLastError=true, CharSet=CharSet.Auto)] public static extern bool MoveFileEx(string lpExistingFileName, uint lpNewFileName, uint dwFlags); }'; [Utils]::MoveFileEx('%~1', 0, 0x4);}"
 	goto :eof
 
 :ENDPROG

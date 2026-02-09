@@ -1,0 +1,61 @@
+name: CI — DRYRUN Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test-dryrun:
+    name: DRYRUN on Windows
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run deepclean.cmd /DRYRUN
+      shell: cmd
+      run: |
+        cd src
+        call deepclean.cmd /DRYRUN
+        if %ERRORLEVEL% neq 0 (
+          echo FAIL: deepclean.cmd exited with code %ERRORLEVEL%
+          exit /b 1
+        )
+
+    - name: Verify log file exists
+      shell: cmd
+      run: |
+        dir src\test_dryrun_*.log
+        if %ERRORLEVEL% neq 0 (
+          echo FAIL: No DRYRUN log file found
+          exit /b 1
+        )
+
+    - name: Verify all phases present in log
+      shell: pwsh
+      run: |
+        $log = Get-ChildItem src/test_dryrun_*.log | Select-Object -First 1
+        Write-Host "Log file: $($log.Name)"
+        $content = Get-Content $log.FullName -Raw
+        $phases = @('DRYRUN')
+        $missing = @()
+        foreach ($p in $phases) {
+          if ($content -notmatch [regex]::Escape($p)) {
+            $missing += $p
+          }
+        }
+        if ($missing.Count -gt 0) {
+          Write-Host "FAIL: Missing in log: $($missing -join ', ')"
+          exit 1
+        }
+        Write-Host "PASS: All expected markers found in log"
+
+    - name: Upload DRYRUN log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dryrun-log
+        path: src/test_dryrun_*.log
+        retention-days: 30
