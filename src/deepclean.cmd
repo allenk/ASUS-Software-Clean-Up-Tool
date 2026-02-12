@@ -59,9 +59,6 @@ set "TASKS_MIG=%SystemRoot%\System32\Tasks_Migrated"
 set "SYSPROF=%SystemRoot%\System32\config\systemprofile"
 set "WOWPROF=%SystemRoot%\SysWOW64\config\systemprofile"
 
-:: Escaped path for WMIC (backslashes doubled)
-set "_PF86ESC=!PF86:\=\\!"
-set "_PF64ESC=!PF64:\=\\!"
 
 echo.
 echo   _____  ______ ______ _____   _____ _      ______          _   _
@@ -288,13 +285,13 @@ call :run taskkill /f /im AacKingstonDramHal_x86.exe
 call :run taskkill /f /im AacKingstonDramHal_x64.exe
 call :run taskkill /f /im Aac3572MbHal_x86.exe
 
-call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\dll\\AcPowerNotification\\AcPowerNotification.exe'" Call Terminate
-call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\dll\\ArmourySocketServer\\ArmourySocketServer.exe'" Call Terminate
-call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\asus_framework.exe'" Call Terminate
-call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\dll\\MBLedSDK\\NoiseCancelingEngine.exe'" Call Terminate
-call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\ArmouryDevice\\dll\\ShareFromArmouryIII\\Mouse\\ROG STRIX CARRY\\P508PowerAgent.exe'" Call Terminate
-call :run WMIC Process Where "ExecutablePath='!_PF86ESC!\\ASUS\\GameSDK Service\\GameSDK.exe'" Call Terminate
-call :run WMIC Process Where "ExecutablePath='!_PF64ESC!\\ASUS\\AsusDriverHub\\ADU.exe'" Call Terminate
+call :killprocess "!PF86!\ASUS\ArmouryDevice\dll\AcPowerNotification\AcPowerNotification.exe"
+call :killprocess "!PF86!\ASUS\ArmouryDevice\dll\ArmourySocketServer\ArmourySocketServer.exe"
+call :killprocess "!PF86!\ASUS\ArmouryDevice\asus_framework.exe"
+call :killprocess "!PF86!\ASUS\ArmouryDevice\dll\MBLedSDK\NoiseCancelingEngine.exe"
+call :killprocess "!PF86!\ASUS\ArmouryDevice\dll\ShareFromArmouryIII\Mouse\ROG STRIX CARRY\P508PowerAgent.exe"
+call :killprocess "!PF86!\ASUS\GameSDK Service\GameSDK.exe"
+call :killprocess "!PF64!\ASUS\AsusDriverHub\ADU.exe"
 
 :: stop and remote Notebook or Laptop related drivers and services
 echo Uninstall Notebook or Laptop Drivers and Apps
@@ -613,6 +610,18 @@ if "!DRYRUN!"=="1" (
     echo !LOGPREFIX! %*
 ) else (
     %*
+)
+exit /b
+
+:: --- :killprocess - terminate process by full path via WMI ---
+:killprocess
+set "_KP=%~1"
+set "_KPESC=!_KP:\=\\!"
+echo !LOGPREFIX! powershell Terminate "!_KP!" >> "!LOGFILE!"
+if "!DRYRUN!"=="1" (
+    echo !LOGPREFIX! powershell Terminate "!_KP!"
+) else (
+    powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter 'ExecutablePath=''!_KPESC!''' | Invoke-CimMethod -MethodName Terminate" >nul 2>&1
 )
 exit /b
 
