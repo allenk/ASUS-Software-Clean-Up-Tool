@@ -4,23 +4,11 @@
 
 > A comprehensive batch script that completely removes ASUS software, drivers, services, and registry entries from Windows systems.
 
-```text
-  _____  ______ ______ _____   _____ _      ______          _   _
- |  __ \|  ____|  ____|  __ \ / ____| |    |  ____|   /\   | \ | |
- | |  | | |__  | |__  | |__) | |    | |    | |__     /  \  |  \| |
- | |  | |  __| |  __| |  ___/| |    | |    |  __|   / /\ \ | . ` |
- | |__| | |____| |____| |    | |____| |____| |____ / ____ \| |\  |
- |_____/|______|______|_|     \_____|______|______/_/    \_\_| \_|
-
-  ASUS Software Clean Up Tool
-  github.com/allenk/deepclean-cmd
-
-```
 | | |
 |---|---|
 | **Platform** | Windows 10 / 11 |
 | **Language** | Batch (CMD) + PowerShell |
-| **Version** | 0.2a |
+| **Version** | 0.2c |
 | **Original Gist** | [allenk/deepclean.cmd](https://gist.github.com/allenk/fcbee909fbf8fb9a54d4484297a1eeba) |
 
 ---
@@ -68,7 +56,7 @@ The script executes **10 cleanup phases**, each targeting a different layer of A
 | **2** | Remove specific system files (DLLs, executables, drivers) from System32 |
 | **3** | Registry cleanup pass 1 — services, HKLM, HKCU, HKCR keys |
 | **4** | Registry cleanup pass 2 — WOW6432Node, uninstall entries, class registrations |
-| **5** | Remove Windows scheduled tasks (ASUS folder and named tasks) |
+| **5** | Remove Windows scheduled tasks (dynamic detection by name, path, and author) |
 | **6** | Remove Armoury Crate UWP app (second pass) |
 | **7** | Remove all remaining ASUS UWP/AppX packages (with user confirmation) |
 | **8** | Clean up stubborn system profile folders with forced permissions |
@@ -227,7 +215,16 @@ If your keyboard and mouse stop working after running deepclean.cmd:
 
 This project originated as a [GitHub Gist](https://gist.github.com/allenk/fcbee909fbf8fb9a54d4484297a1eeba) with 24 revisions and 74 comments. Key milestones:
 
-### 2026-02 — Dynamic Paths, Dry Run Mode & Sandbox Testing
+### 0.2c (2026-03) — Scheduled Task Cleanup & Community Feedback
+- **Fixed broken scheduled task parsing** — replaced `FOR /F "tokens=3 delims=\" ... findstr ASUS` with PowerShell `Get-ScheduledTask` using dual filters: case-sensitive name/path (`-clike`) + Author verification (`-like '*ASUS*'`), preventing false positives (e.g. `ScanForUpdatesAsUser`)
+- Added `ASUS Update Checker 2.0` to hardcoded fallback task list ([GitHub issue #1](https://github.com/allenk/ASUS-Software-Clean-Up-Tool/issues/1))
+- **BYPASS: AsusPTPService** — Precision Touchpad service intentionally not removed to prevent laptop input device loss
+- Added `docs/CHANGELOG.md` and `docs/issue_0001.md` for development tracking
+
+### 0.2b (2026-02) — Windows 11 25H2 Compatibility
+- **Replaced WMIC with Get-CimInstance** — `wmic.exe` was removed in Windows 11 25H2; added `:killprocess` subroutine using `Get-CimInstance Win32_Process | Invoke-CimMethod Terminate`
+
+### 0.2a (2026-02) — Dynamic Paths, Dry Run Mode & Sandbox Testing
 - Replaced all hardcoded `C:\` filesystem paths with Windows environment variables for automatic system drive detection
 - Added `/DRYRUN` parameter — logs every destructive command without executing anything
 - Both modes produce structured log files (`[DRYRUN]` / `[EXEC]` prefix) for direct comparison
@@ -281,6 +278,7 @@ This tool has been shaped by extensive community feedback. Special thanks to:
 
 | Contributor | Contribution |
 |---|---|
+| [@ConjurerGitHub](https://github.com/ConjurerGitHub) | ASUS Update Checker 2.0, AsusPTPService, and enhancement suggestions ([#1](https://github.com/allenk/ASUS-Software-Clean-Up-Tool/issues/1)) |
 | [@Acrivec](https://github.com/Acrivec) | HardwareConfig discovery, registry expansion suggestions |
 | [@LeadAssimilator](https://github.com/LeadAssimilator) | asusgio2/asusgio3 kernel driver management |
 | [@ArasakaApart](https://github.com/ArasakaApart) | Robocopy infinite loop bug report and testing |

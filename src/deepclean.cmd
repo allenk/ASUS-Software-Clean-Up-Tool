@@ -17,7 +17,7 @@
 setlocal EnableDelayedExpansion
 
 :: --- Version ---
-set "VER=0.2a"
+set "VER=0.2c"
 
 :: --- /DRYRUN Flag Parsing ---
 set "DRYRUN=0"
@@ -236,6 +236,11 @@ call :run sc stop LightingService
 call :run sc stop IOMap
 call :run sc stop RefreshRateService
 call :run sc stop ASUSOptimization
+
+:: BYPASS: AsusPTPService (Precision Touchpad) - removing this service may cause
+:: laptop touchpad/keyboard input to stop working. See GitHub issue #1.
+:: call :run sc stop AsusPTPService
+:: call :run sc delete AsusPTPService
 
 :: Stop kernel drivers
 call :run sc stop asusgio2
@@ -531,15 +536,16 @@ for %%i in (%packagelist%) do (
 :: clean Tasks
 echo.
 echo Backup and Clean Tasks ...
-:: clean specified tasks
+:: clean specified tasks (fallback for tasks not authored by ASUSTeK)
 call :run schtasks /delete /TN "ASUS Optimization 36D18D69AFC3" /F
 call :run schtasks /delete /TN "ASUSProArtUpdateService-Logon" /F
 call :run schtasks /delete /TN "ArmourySocketServer" /F
+call :run schtasks /delete /TN "ASUS Update Checker 2.0" /F
 
-:: clean ASUS task folder
+:: clean ASUS tasks dynamically (Author contains ASUS, case-insensitive)
 echo.
 echo Clean ASUS Tasks ...
-FOR /F "tokens=3 delims=\" %%G IN ('schtasks /Query /FO LIST ^| findstr ASUS') DO call :run schtasks /Delete /TN "\ASUS\%%G" /F
+FOR /F "usebackq delims=" %%G IN (`powershell -NoProfile -Command "Get-ScheduledTask | Where-Object { ($_.TaskPath -clike '*ASUS*' -or $_.TaskName -clike '*ASUS*') -and $_.Author -like '*ASUS*' } | ForEach-Object { $_.TaskPath + $_.TaskName }"`) DO call :run schtasks /Delete /TN "%%G" /F
 
 :STEP6
 :: remove ArmouryCrate App
